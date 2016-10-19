@@ -1,0 +1,16 @@
+{
+  "name": "product-database-sql",
+  "version": "1.0.0",
+  "description": "product database using sql",
+  "main": "bamazoncustomer.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Matt Holland",
+  "license": "ISC",
+  "dependencies": {
+    "cli-table": "^0.3.1",
+    "inquirer": "^1.2.2",
+    "mysql": "^2.11.1"
+  }
+}
