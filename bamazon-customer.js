@@ -1,8 +1,9 @@
 // Include necessary files
-var inquirer = require('inquirer'),
-    Table    = require('cli-table'),
-    db       = require('./db-connect'),
-    query    = require('./queries.js');
+var inquirer  = require('inquirer'),
+    Table     = require('cli-table'),
+    ProdTable = require('./prod-table'),
+    db        = require('./db-connect'),
+    query     = require('./queries.js');
 
 // Establish db connection
 db.connect();
@@ -24,30 +25,19 @@ var main = {
 
 	// Display all items available for sale on itinial page load, and ask customer what they would like to purchase
 	displayItems: function() {
-    	db.conn.query(query.queryAllItems,function(err, res){
+    	db.conn.query(query.getItems(viewLow = false),function(err, res){
     	    if (err) throw err;
-    	    var i = 0;
-    	    // Initialize Terminal table display plugin
-    	    var table = new Table({
-    	    	head: ['ID', 'Name', 'Price', 'Qty', 'Dept'],
-    	    	colWidths: [7, 20, 15, 7, 20]
-    	    });
-    	    // Loop through all query results
-    	    while(i < res.length){
-    	    	var prod = res[i]
-    	    	// Push prod id to array for later customer selection
-    	    	main.prodIdArray.push(prod.id.toString());
-    	    	table.push([prod.id, prod.prod_name, prod.price, prod.stock_qty, prod.dept_name]);
-    	        i++;
-    	    }
-    	    console.log(table.toString());
+    	    // Create/show new product table, and establish the returned prod Id array for later menu use
+			var prodTable = new ProdTable(res);
+			prodTable.showTable();
+			var prodIdArray = prodTable.prodIdArray;
     	    inquirer.prompt(
 				[
 					{	
 						name: "id",
 						message: "Please select the ID of the product you wish to purchase: ",
 						type: "list",
-						choices: main.prodIdArray
+						choices: prodIdArray
 					},
 	
 					{
@@ -60,7 +50,7 @@ var main = {
 					}
 			]).then(function(answers) {
 				// Find the index of the product selected, to enable quantity checking (already have the info available from SELECT query)
-				var index     = main.prodIdArray.indexOf(answers.id);
+				var index     = prodIdArray.indexOf(answers.id);
 				var storeQty  = res[index].stock_qty;
 				var prodId    = answers.id;
 				var prodName  = res[index].prod_name;
@@ -145,7 +135,7 @@ var main = {
 			[
 				{
 					name: 'confirm',
-					message: msg,//'You purchased ' + custQty + ' of the ' + prodName + ' product for $' + totalCost + ' successfully! Would you like to place another order? (Y/N)',
+					message: msg,
 					type: "input",
 					validate: function(str) {
 						return (main.validYesNo.test(str));
