@@ -18,7 +18,7 @@ var dbCxn = {
 				console.log("A database connection error has occurred: " + err);
 				throw err;
 			}
-			console.log(dbCxn.conn.state, ' Thread: ', dbCxn.conn.threadId);
+			//console.log(dbCxn.conn.state, ' Thread: ', dbCxn.conn.threadId);
 		});
 	}
 }
