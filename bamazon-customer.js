@@ -1,3 +1,11 @@
+/**
+ * Program: bamazon-customer.js
+ * Created: 10/19/2016 by 
+ * @author: Matt Holland
+ * Located: product-database-sql/
+ * Purpose: Execute customer purchasing functions
+ */
+
 // Include necessary files
 var inquirer   = require('inquirer')             ,
     Table      = require('cli-table')            ,

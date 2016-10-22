@@ -1,4 +1,11 @@
-// Note: use Jing to record a video of your app
+/**
+ * Program: bamazon-manager.js
+ * Created: 10/20/2016 by 
+ * @author: Matt Holland
+ * Located: product-database-sql/
+ * Purpose: Execute inventory management functions
+ */
+
 // Include necessary files
 var inquirer   = require('inquirer')             ,
     Table      = require('cli-table')            ,

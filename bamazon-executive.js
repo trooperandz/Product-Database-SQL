@@ -1,3 +1,11 @@
+/**
+ * Program: bamazon-executive.js
+ * Created: 10/21/2016 by 
+ * @author: Matt Holland
+ * Located: product-database-sql/
+ * Purpose: Execute inventory executive management functions
+ */
+
 // Include necessary files
 var inquirer   = require('inquirer')             ,
     Table      = require('cli-table')            ,
