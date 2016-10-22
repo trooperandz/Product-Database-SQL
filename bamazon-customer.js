@@ -1,34 +1,26 @@
 // Include necessary files
-var inquirer  = require('inquirer'),
-    Table     = require('cli-table'),
-    ProdTable = require('./prod-table'),
-    db        = require('./db-connect'),
-    query     = require('./queries.js');
+var inquirer   = require('inquirer')             ,
+    Table      = require('cli-table')            ,
+    Session    = require('./modules/new-session'),
+    StoreTable = require('./modules/store-table'),
+    db         = require('./modules/db-connect') ,
+    query      = require('./modules/queries')    ;
 
 // Establish db connection
 db.connect();
 
+// Initialize the new user session
+var session = new Session([]);
+
 // Main store orders processing object
 var main = {
-
-	 // Initialize product ID choice array to allow the customer to make inventory selection
-    prodIdArray: [],
-
-	// Validate customer order inputs
-    validNum: /[0-9]/,
-    validYesNo: /[YyNn]/,
-
-	// Convert dollar amounts to currency format for readability
-	formatNum: function(x) {
-    	return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-	},
-
 	// Display all items available for sale on itinial page load, and ask customer what they would like to purchase
 	displayItems: function() {
     	db.conn.query(query.getItems(viewLow = false),function(err, res){
     	    if (err) throw err;
     	    // Create/show new product table, and establish the returned prod Id array for later menu use
-			var prodTable = new ProdTable(res);
+    	    console.log("Current Products Available:");
+			var prodTable = new StoreTable(res);
 			prodTable.showTable();
 			var prodIdArray = prodTable.prodIdArray;
     	    inquirer.prompt(
@@ -45,7 +37,7 @@ var main = {
 						message: "How many would you like to purchase?",
 						type: "input",
 						validate: function(str) {
-							return (main.validNum.test(str));
+							return (session.validNum.test(str));
 						}
 					}
 			]).then(function(answers) {
@@ -53,12 +45,13 @@ var main = {
 				var index     = prodIdArray.indexOf(answers.id);
 				var storeQty  = res[index].stock_qty;
 				var prodId    = answers.id;
+				var deptId    = res[index].dept_id;
 				var prodName  = res[index].prod_name;
 				var unitPrice = res[index].price;
 	
 				// If user requested a quantity less than current stock, update the db.  Otherwise, prompt for another quantity entry
 				if(answers.qty < storeQty) {
-					main.confirmOrder(prodId, prodName, unitPrice, storeQty, answers.qty);
+					main.confirmOrder(deptId, prodId, prodName, unitPrice, storeQty, answers.qty);
 				} else {
 					// Use inquirer to prompt for another quantity entry
 					inquirer.prompt(
@@ -69,7 +62,7 @@ var main = {
 						  	type: "input",
 						  	// Do not allow entry to go through unless it is a number less than the stock quantity
 						  	validate: function(str) {
-						  		if (main.validNum.test(str)) {
+						  		if (session.validNum.test(str)) {
 						  			if(parseInt(str) > storeQty) {
 						  				return false;
 						  			} else {
@@ -81,7 +74,7 @@ var main = {
 						  	}
 						  }
 					]).then(function(answers) {
-						main.confirmOrder(prodId, prodName, unitPrice, storeQty, answers.qty);
+						main.confirmOrder(deptId, prodId, prodName, unitPrice, storeQty, answers.qty);
 					});
 				}
 			});
@@ -89,9 +82,9 @@ var main = {
 	},
 
 	// If customer confirms their order, update the store inventory
-	confirmOrder: function(prodId, prodName, unitPrice, storeQty, custQty) {
+	confirmOrder: function(deptId, prodId, prodName, unitPrice, storeQty, custQty) {
 		// Format total purchase price to display to customer
-		totalCost = main.formatNum((unitPrice * custQty).toFixed(2));
+		totalCost = session.formatNum((unitPrice * custQty).toFixed(2));
 
 		inquirer.prompt(
 		    [
@@ -100,7 +93,7 @@ var main = {
 					message: "You have requested to purchase " + custQty + " of the " + prodName + " product. This will cost $" + totalCost + ". Proceed? (Y/N)",
 					type: "input",
 					validate: function(str) {
-						return (main.validYesNo.test(str));
+						return (session.validYesNo.test(str));
 					}
 				}
 		]).then(function(answers) {
@@ -109,13 +102,13 @@ var main = {
 				var newQty = (storeQty - custQty);
 				// Update the product database
 				db.conn.query(query.updateInventory, [newQty, prodId], function(err, res) {
-					if(err) {
-   						console.log('There was a query error: ' + err);
-   					} else {
+					if(err) throw err;
+   					// Now update product_sales in department table
+   					db.conn.query(query.updateDeptSales(), [(unitPrice * custQty), deptId], function(err, res) {
+   						if(err) throw err;
    						// Show purchase confirmation message, and then ask if they would like to make another purchase
    						main.orderAgain(custQty, prodName, totalCost, purchased = true);
-   						//console.log('You purchased ' + custQty + ' of the ' + prodName + ' product for $' + totalCost + ' successfully!');
-   					}
+   					});
 				});
 			} else {
 				// Show message, and then ask if they would like to continue shopping
@@ -138,11 +131,12 @@ var main = {
 					message: msg,
 					type: "input",
 					validate: function(str) {
-						return (main.validYesNo.test(str));
+						return (session.validYesNo.test(str));
 					}
 				}
 		]).then(function(answers) {
 			if(answers.confirm.toUpperCase() == 'Y') {
+				// Run the main program again
 				main.displayItems();
 			} else {
 				// Show thank you message, and then exit the program

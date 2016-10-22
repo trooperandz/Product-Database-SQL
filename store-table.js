@@ -11,7 +11,7 @@
 // Terminal Table creator plugin
 var Table = require('cli-table');
 
-class prodTable {
+class StoreTable {
 	constructor(resultArray) {
 		this.resultArray = resultArray;
 		this.prodIdArray = [];
@@ -36,23 +36,34 @@ class prodTable {
     	console.log(table.toString());
 	}
 
-	showDeptTable() {
+	showDeptTable(execOpts) {
 		// Initialize Terminal table display plugin
-		var table = new Table({
-			head: ['ID', 'Department'],
-			colWidths: [7, 20]
-		});
+		if(execOpts) {
+			var table = new Table({
+				head: ['ID', 'Department', 'Overhead Costs', 'Product Sales', 'Total Profit'],
+				colWidths: [7, 18, 16, 16, 16]
+			});
+		} else {
+			var table = new Table({
+				head: ['ID', 'Department'],
+				colWidths: [7, 20]
+			});
+		}
 		// Loop through all query results
 		var i = 0;
 		while(i < this.resultArray.length) {
 			var dept = this.resultArray[i];
 			// Push dept id to array for later user selection
 			this.deptIdArray.push(dept.id.toString());
-			table.push([dept.id, dept.dept_name]);
+			if(execOpts) {
+				table.push([dept.id, dept.dept_name, dept.overhead_cost, dept.product_sales, dept.total_profit]);
+			} else {
+				table.push([dept.id, dept.dept_name]);
+			}
 			i++;
 		}
 		console.log(table.toString());
 	}
 }
 
-module.exports = prodTable;
+module.exports = StoreTable;

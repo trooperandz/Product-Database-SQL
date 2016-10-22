@@ -1,32 +1,20 @@
 // Note: use Jing to record a video of your app
 // Include necessary files
-var inquirer  = require('inquirer'),
-    Table     = require('cli-table'),
-    ProdTable = require('./prod-table'),
-    db        = require('./db-connect'),
-    query     = require('./queries.js');
+var inquirer   = require('inquirer')             ,
+    Table      = require('cli-table')            ,
+    Session    = require('./modules/new-session'),
+    StoreTable = require('./modules/store-table'),
+    db         = require('./modules/db-connect') ,
+    query      = require('./modules/queries')    ;
 
 // Establish db connection
 db.connect();
 
+// Initialize the new user session
+var session = new Session(['View Products For Sale', 'View Low Inventory', 'Add To Inventory', 'Add New Product', 'Exit']);
+
 // Main store orders processing object
 var main = {
-	// Initialize product ID choice array to allow the customer to make inventory selection
-    prodIdArray: [],
-
-    // Initialize manager menu options
-    mgrOptsArray: ['View Products For Sale', 'View Low Inventory', 'Add To Inventory', 'Add New Product', 'Exit'],
-
-	// Validate customer order inputs
-    validNum: /[0-9]/,
-    validYesNo: /[YyNn]/,
-    validDollar: /^(?:|\d{1,15}(?:\.\d{2,2})?)$/,
-
-    // Convert dollar amounts to currency format for readability
-	formatNum: function(x) {
-    	return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-	},
-
     // Show manager menu options
     showOptions: function() {
     	inquirer.prompt(
@@ -35,10 +23,9 @@ var main = {
 					name: "selection",
 					message: "Please select from the following options:",
 					type: "list",
-					choices: main.mgrOptsArray
+					choices: session.optsArray
     			}
     	]).then(function(answers) {
-    		//console.log("answer: " + answers.selection);
     		// Clear the product id array and the product name array each time a selection is made
     		main.prodIdArray = [];
     		// Initialize result holder and return data object for switch assignment
@@ -47,11 +34,11 @@ var main = {
     		
 			switch(answers.selection) {
 				// Show table of all products
-				case main.mgrOptsArray[0]: 
+				case session.optsArray[0]: 
 						db.conn.query(query.getItems(viewLow = false), function(err, res) {
 							if (err) throw err;
 							// Create/show new product table, and establish the returned prod Id array for later menu use
-							var prodTable = new ProdTable(res);
+							var prodTable = new StoreTable(res);
 							prodTable.showTable();
 							// Save as global so may be used in later menu selections for Add To Inventory option
 							var prodIdArray = prodTable.prodIdArray;
@@ -59,17 +46,17 @@ var main = {
 						});
 					break;
 				// Show table of products with low inventory, and show user options to increase product stock
-				case main.mgrOptsArray[1]:
+				case session.optsArray[1]:
 						db.conn.query(query.getItems(viewLow = true), function(err, res) {
 							if (err) throw err;
 							// If there are no low inventory items, return user to main menu
 							if(res.length == 0) {
 								console.log("There are no items with inventory of less than five units.  You will be redirected back to the main menu shortly.");
-								setTimeout(main.showOptions, 4000);
+								setTimeout(main.showOptions, 3500);
 								return;
 							}
     	    				// Create/show new product table, and establish the returned prod Id array for later menu use
-							var prodTable = new ProdTable(res);
+							var prodTable = new StoreTable(res);
 							prodTable.showTable();
 							var prodIdArray = prodTable.prodIdArray;
 							// Ask user if they would like to add to inventory
@@ -80,7 +67,7 @@ var main = {
     	    							message: "Would you like to order additional stock for any of the above inventory?",
     	    							type: "input",
     	    							validate: function(str) {
-    	    								return (main.validYesNo.test(str));
+    	    								return (session.validYesNo.test(str));
     	    							}
     	    						}
     	    				]).then(function(answers) {
@@ -90,19 +77,18 @@ var main = {
     	    						var msgTwo = "How many would you like to purchase?";
     	    						main.addInventory(msgOne, msgTwo, prodIdArray, res);
     	    					} else {
-    	    						console.log("Thank you. You will be redirected back to the main menu shortly.");
-    	    						setTimeout(main.showOptions, 4000);
+    	    						main.returnToMainMenu();
     	    					}
     	    				});
 						});
 					break;
 				// User selected to add additional inventory
-				case main.mgrOptsArray[2]:
+				case session.optsArray[2]:
 					// Produce the product table for reference
 					db.conn.query(query.getItems(viewLow = false), function(err, res) {
 						if (err) throw err;
 						// Create/show new product table, and establish the returned prod Id array for later menu use
-						var prodTable = new ProdTable(res);
+						var prodTable = new StoreTable(res);
 						prodTable.showTable();
 						var prodIdArray = prodTable.prodIdArray;
 						// Allow user to select items to order, and then execute purchase instruction
@@ -112,20 +98,19 @@ var main = {
     	    		});
 					break;
 				// User selected to add a new product
-				case main.mgrOptsArray[3]:
+				case session.optsArray[3]:
 					// Show the department table for user to reference correct department ID, and create dept id array for menu slection
 					db.conn.query(query.getDepartments(), function(err, res) {
 						if(err) throw err;
-						var deptTable = new ProdTable(res);
-						deptTable.showDeptTable();
+						var deptTable = new StoreTable(res);
+						deptTable.showDeptTable(execOpts = false);
 						var deptIdArray = deptTable.deptIdArray;
 						main.addNewItem(deptIdArray, res);
 					});
 					break;
 				// User chose to exit the program
-				case main.mgrOptsArray[4]:
-					console.log("Thank you for using the Tesla inventory system.  You are now logged out.")
-					process.exit();
+				default:
+					session.exitSystem();
 					break;
 			}
     	});
@@ -134,7 +119,7 @@ var main = {
     // If user confirms their order, update the store inventory
 	confirmOrder: function(prodId, prodName, unitPrice, storeQty, custQty) {
 		// Format total purchase price to display to customer
-		totalCost = main.formatNum((unitPrice * custQty).toFixed(2));
+		totalCost = session.formatNum((unitPrice * custQty).toFixed(2));
 
 		inquirer.prompt(
 		    [
@@ -143,7 +128,7 @@ var main = {
 					message: "You have requested to add " + custQty + " of the " + prodName + " product to your inventory. This will cost $" + totalCost + ". Proceed? (Y/N)",
 					type: "input",
 					validate: function(str) {
-						return (main.validYesNo.test(str));
+						return (session.validYesNo.test(str));
 					}
 				}
 		]).then(function(answers) {
@@ -183,7 +168,7 @@ var main = {
     				message: msgTwo,
 					type: "input",
 					validate: function(str) {
-						return (main.validNum.test(str));
+						return (session.validNum.test(str));
 					}
     			}
     	]).then(function(answers) {
@@ -213,17 +198,15 @@ var main = {
 					message: msg,
 					type: "input",
 					validate: function(str) {
-						return (main.validYesNo.test(str));
+						return (session.validYesNo.test(str));
 					}
 				}
 		]).then(function(answers) {
 			if(answers.confirm.toUpperCase() == 'Y') {
-				console.log("Thank you.  You will be redirected to the main menu shortly.");
-				setTimeout(main.showOptions, 4000);
+				main.returnToMainMenu();
 			} else {
 				// Show thank you message, and then exit the program
-				console.log("Thank you for using the Tesla inventory system! You are now logged out.");
-				process.exit();
+				session.exitSystem();
 			}
 		});
 	},
@@ -237,7 +220,7 @@ var main = {
 					type: "list",
 					choices: deptIdArray,
 					validate: function(str) {
-						return (main.validNum.test(str));
+						return (session.validNum.test(str));
 					}
 				},
 
@@ -252,7 +235,7 @@ var main = {
 					message: "Please enter the unit consumer price of the new item (i.e. 000.00):",
 					type: "input",
 					validate: function(str) {
-						return (main.validDollar.test(str));
+						return (session.validDollar.test(str));
 					}
 
 				},
@@ -262,7 +245,7 @@ var main = {
 					message: "Please enter the number of units of the new product which you would like to add:",
 					type: "input",
 					validate: function(str) {
-						return (main.validNum.test(str));
+						return (session.validNum.test(str));
 					}
 				},
 
@@ -271,7 +254,7 @@ var main = {
 					message: "You have selected to add a new product to the system.  Proceed? (Y/N)",
 					type: "input",
 					validate: function(str) {
-						return (main.validYesNo.test(str));
+						return (session.validYesNo.test(str));
 					}
 				}
 		]).then(function(answers) {
@@ -286,30 +269,33 @@ var main = {
 						[
 							{
 								name: "selection",
-								message: "Thank you. You have added " + answers.qty + " of the new item " + answers.prodName + " to the inventory of the " + deptName + " successfully, at a total price of " + (answers.qty + answers.price) + ". Would you like to add another new item? (Y/N)",
+								message: "Thank you. You have added " + answers.qty + " of the new item " + answers.prodName + " to the inventory of the " + deptName + " department successfully, at a total price of $" + session.formatNum(answers.qty + answers.price) + ". Would you like to add another new item? (Y/N)",
 								type: "input",
 								validate: function(str) {
-									return (main.validYesNo.test(str));
+									return (session.validYesNo.test(str));
 								}
 							}
 					]).then(function(answers) {
 						if(answers.selection.toUpperCase() == 'Y') {
 							// Recursively call the function again
-							main.addNewItem();
+							main.addNewItem(deptIdArray, res);
 						} else {
 							// Return user to main menu
-							console.log("Thank you. You will be redirected back to the main menu shortly.");
-    	 					setTimeout(main.showOptions, 4000);
+							main.returnToMainMenu();
 						}
 					});
 				});
 			} else {
 				// Return user to main menu
-				console.log("Thank you. You will be redirected back to the main menu shortly.");
-    	 		setTimeout(main.showOptions, 4000);
+				main.returnToMainMenu();
 			}
 		});
-	}
-}
+	},
 
+	returnToMainMenu: function() {
+        console.log("Thank you.  You will be redirected to the main menu shortly.");
+        setTimeout(main.showOptions, 3500);
+    },
+}
+// Run the program
 main.showOptions();
