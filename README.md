@@ -1,6 +1,8 @@
 # Product-Database-SQL
 
-> This assignment is a mock inventory management system, using MySQL for storying product data.  The system runs on Node.js, in the computer console. Please see the example video below (under /video), which shows the program executing.
+> This assignment is a mock inventory management system, using MySQL for storying product data.  The system runs on Node.js, in the computer console.
+
+## Note: Please view the program demo video at: http://screencast.com/t/J4PrxNjUfrI
 
 # This repository contains the following folders/files:
 
@@ -18,9 +20,6 @@
  * queries.js
  * secret-keys.js
  * store-table.js
-
-### /video
- * prod-db-holland-video.swf
 
 ## Program General Information:
 
