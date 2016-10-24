@@ -109,7 +109,7 @@ var main = {
 				// Calculate updated quantity for db insertion
 				var newQty = (storeQty - custQty);
 				// Update the product database
-				db.conn.query(query.updateInventory, [newQty, prodId], function(err, res) {
+				db.conn.query(query.updateInventory(), [newQty, prodId], function(err, res) {
 					if(err) throw err;
    					// Now update product_sales in department table
    					db.conn.query(query.updateDeptSales(), [(unitPrice * custQty), deptId], function(err, res) {

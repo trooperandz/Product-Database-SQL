@@ -143,7 +143,7 @@ var main = {
 				// Calculate updated quantity for db insertion
 				var newQty = (storeQty + parseInt(custQty));
 				// Update the product database
-				db.conn.query(query.updateInventory, [newQty, prodId], function(err, res) {
+				db.conn.query(query.updateInventory(), [newQty, prodId], function(err, res) {
 					if(err) {
    						console.log('There was a query error: ' + err);
    					} else {
@@ -269,8 +269,8 @@ var main = {
 			var index     = deptIdArray.indexOf(answers.deptId);
 			var deptName  = res[index].dept_name;
 			if(answers.confirm.toUpperCase() == 'Y') {
-				// Insert new product into the database, and show confirmation message
-				db.conn.query(query.addItem(answers.prodName, answers.deptId, answers.price, answers.qty), function(err, res) {
+				// Insert new product into the database, and then show confirmation message
+				db.conn.query(query.addItem(/*answers.prodName, answers.deptId, answers.price, answers.qty*/), [answers.prodName, answers.deptId, answers.price, answers.qty], function(err, res) {
 					if(err) throw err;
 					inquirer.prompt(
 						[

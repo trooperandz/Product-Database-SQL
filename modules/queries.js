@@ -1,4 +1,11 @@
-// Provide query templates
+/**
+ * Program: queries.js
+ * Created: 10/19/2016 by 
+ * @author: Matt Holland
+ * Located: product-database-sql/modules
+ * Purpose: Provide query templates for inventory system
+ */
+
 var query = {
 
 	// Statement for retrieving products. If viewLow == true, retrieve only those products with a stock <= 5.
@@ -34,15 +41,17 @@ var query = {
    	},
    	
    	// Statement for adding a new item to inventory
-   	addItem: function(prodName, deptId, price, stock_qty) {
+   	addItem: function() {
    		var stmt = `INSERT INTO product (prod_name, dept_id, price, stock_qty)
-   					VALUES ("`+prodName+`", `+deptId+`, `+price+`, `+stock_qty+`)`;
-   		console.log('stmt: ' + stmt);
+   					VALUES (?, ?, ?, ?)`;
    		return stmt;
    	},
 
    	// Statement for update product quantity amount
-   	updateInventory: `UPDATE product SET stock_qty = ? WHERE id = ?`,
+   	updateInventory: function() {
+   		var stmt = `UPDATE product SET stock_qty = ? WHERE id = ?`;
+   		return stmt;
+   	},
 
    	// Statement for updating the department table with product sales amount
    	updateDeptSales: function() {
